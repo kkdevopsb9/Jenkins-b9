@@ -1,0 +1,69 @@
+/scripted-way-PL
+
+node
+{
+    
+   properties([
+        pipelineTriggers([
+            pollSCM('* * * * *')
+        ])
+    ])
+
+   def mavenHome= tool name: "maven-3.9.0"
+   stage('git checkout')
+   {
+      git branch: 'master', url: 'https://github.com/kkdevopsb9/maven-webapplication-project-kkfunda.git'
+   }
+   stage('COMPILE')
+   {
+    sh  "${mavenHome}/bin/mvn compile" 
+   }
+  stage('SQ REPORT') {
+        sh "${mavenHome}/bin/mvn sonar:sonar"
+    }
+
+    stage('SQ Approval') {
+
+        def decision = input(
+            id: 'SQApproval',
+            message: 'Please review the SonarQube report and approve/reject the pipeline.',
+            parameters: [
+                choice(
+                    name: 'ACTION',
+                    choices: ['Approve', 'Reject'],
+                    description: 'Select your action'
+                )
+            ]
+        )
+
+        if (decision == 'Reject') {
+            error("Pipeline rejected after SonarQube review.")
+        }
+
+        echo "Pipeline approved. Proceeding to next stage..."
+    }
+
+
+
+   stage('Build')
+   {
+     sh  "${mavenHome}/bin/mvn package"
+   }
+   stage('Deploy to Nexus')
+   {
+      sh  "${mavenHome}/bin/mvn deploy"
+   }
+
+   stage('Deploy to Tomcat') 
+    {
+      
+      sh """
+
+      curl -u kk:password \
+--upload-file /var/lib/jenkins/workspace/webapp-Scripted-Way-PL/target/maven-web-application.war \
+"http://3.108.62.23:8080/manager/text/deploy?path=/maven-web-application&update=true"
+          
+        """
+    }
+	
+} //node ending
