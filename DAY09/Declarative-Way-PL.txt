@@ -1,0 +1,62 @@
+
+
+//declarative-way-PL for web app
+
+pipeline 
+{
+  agent any
+  tools
+  {
+    maven "maven-3.9.0"
+  }
+  stages
+  {
+     stage('git checkout')
+     {
+       steps
+       {
+         git branch: 'master', url: 'https://github.com/kkdevopsb9/maven-webapplication-project-kkfunda.git'
+       }
+     }
+     stage('Build')
+     {
+       steps
+       {
+         sh "mvn clean package"
+       }
+     }
+
+      stage('SQ REPORT')
+     {
+       steps
+       {
+         sh "mvn sonar:sonar"
+       }
+     }
+
+      stage('Deploy to Nexus')
+     {
+       steps
+       {
+         sh "mvn deploy"
+       }
+     }
+     stage('Deploy to Tomcat')
+     {
+       steps
+       {
+            sh """
+
+      curl -u kk:password \
+--upload-file /var/lib/jenkins/workspace/webapp-Declarative-Way-PL/target/maven-web-application.war \
+"http://13.233.87.148:8080/manager/text/deploy?path=/maven-web-application&update=true"
+          
+        """
+       }
+     }
+
+    
+  } //stages ending
+
+	
+} //pipeline ending
